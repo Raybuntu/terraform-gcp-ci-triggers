@@ -66,3 +66,17 @@ variable "webapp_trigger_sa" {
     id = string
   })
 }
+
+variable "packer_vm_sa" {
+  description = "Packer VM service account object"
+  type        = object({
+    name  = string
+    id    = string
+    email = string
+  })
+}
+
+variable "cloudbuild_secret_accessor_binding" {
+  description = "IAM binding that ensures Cloud Build SA has access to GitHub OAuth secret"
+  type        = any
+}

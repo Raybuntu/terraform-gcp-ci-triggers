@@ -5,6 +5,27 @@ data "google_project" "project" {
 }
 
 # https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_service_account
+# create a SA for packer builds
+resource "google_service_account" "packer_vm" {
+  account_id   = "packer-vm-sa"
+  display_name = "Packer VM Build Service Account"
+  project      = var.project_id
+}
+
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam
+# Assigns minimum roles to the packer-vm-sa
+resource "google_project_iam_member" "packer_vm_roles" {
+  for_each = toset([
+    "roles/compute.instanceAdmin.v1", # Allows creating, deleting, and managing VM instances
+    "roles/compute.imageUser",        # Allows using public base images (like Ubuntu)
+    "roles/compute.viewer",           # Grants read-only access to compute metadata (e.g. zones, machine types)
+  ])
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.packer_vm.email}"
+}
+
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_service_account
 # cloudbuild service account
 resource "google_service_account" "build_trigger" {
   project = var.project_id
@@ -36,9 +57,9 @@ resource "google_secret_manager_secret_iam_member" "cloudbuild_serviceagent_secr
 }
 
 # https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/google_project_iam
-# Allows the build trigger service account to act as the Compute Engine default service account.
-resource "google_service_account_iam_member" "build_trigger_on_compute_default" {
-  service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+# Allows the build trigger service account to act as packer_vm SA (for packer builds)
+resource "google_service_account_iam_member" "build_trigger_impersonate_packer_vm" {
+  service_account_id = google_service_account.packer_vm.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.build_trigger.email}"
 }

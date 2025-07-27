@@ -11,6 +11,9 @@ resource "google_cloudbuildv2_connection" "github" {
       oauth_token_secret_version = "${var.gh_connect_secret_name}/versions/latest"
     }
   }
+  depends_on = [
+    var.cloudbuild_secret_accessor_binding
+  ]
 }
 
 # https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloudbuildv2_repository
@@ -58,6 +61,7 @@ resource "google_cloudbuild_trigger" "packertrigger" {
     _ZONE                = var.build_zone
     _WEBAPP_GIT_REPO_URL = var.webapp_remote_uri
     _WEBAPP_GIT_SHA      = var.webapp_git_sha
+    _PACKER_VM_SA_EMAIL  = var.packer_vm_sa.email
   }
 
   filename = var.cloudbuild_filename
